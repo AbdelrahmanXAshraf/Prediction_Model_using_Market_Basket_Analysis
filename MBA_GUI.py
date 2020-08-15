@@ -1,35 +1,68 @@
+"""Created By: Abdelrahman Ashraf 152761"""
 import MBA_Main
-import matplotlib.pyplot as plt
+import os
+from tkinter import messagebox as mb
 from tkinter import filedialog
 from tkinter import *
 from datetime import datetime
+import matplotlib.pyplot as plt
 
 now = datetime.now()
 
-def button_go_callback():
+
+def button_plot_callback():
     support_threshold = float(entry_support.get())
     confidence_threshold = float(entry_confidence.get())
     input_file = entry_filename.get()
-    text.delete(1.0, END)
-    statusText.set("Rules Generated Successfully")
-    data = MBA_Main.read_data(input_file)
-    final_results = ['{} => {}  \t|\t Support = {:.2f}, Confidence = {:.2f}'.format(item_set, item,
-                     MBA_Main.support_frequency(data[1:], item_set.union({item})), MBA_Main.confidence(data[1:], item_set, {item}))
-                     for item_set, item in MBA_Main.apriori(data[1:], support_threshold, confidence_threshold)]
+    if os.path.splitext(input_file)[1] == ".csv":
+        text.delete(1.0, END)
+        data = MBA_Main.read_data(input_file)
+        rules = ['{} => {}'.format(item_set, item)
+                 for item_set, item in MBA_Main.apriori(data[1:], support_threshold, confidence_threshold)]
 
-    date_time = now.strftime("%d/%m/%Y %H:%M:%S")
-    text.insert(INSERT, "Current Date & Time: ", [0], date_time)
-    text.insert(INSERT, "\n\n")
+        lift = ['lift = {:.2f}'.format(MBA_Main.lift(data[1:], item_set, {item}))
+                for item_set, item in MBA_Main.apriori(data[1:], support_threshold, confidence_threshold)]
+        # for i in range(0,len(lift)):
+        #     lift[int(i)] = int(lift[i])
 
-    # plt.scatter(support_threshold, confidence_threshold, alpha=0.5, marker="*")
-    # plt.xlabel('support')
-    # plt.ylabel('confidence')
-    # plt.show()
+        y_positions = range(len(rules))
 
-    for result in final_results:
-        text.insert(INSERT, str(result)[3:-2])
-        text.insert(INSERT, "\n\n")
-    #plt.scatter(support_frequency(data[1:], item_set.union({item})), confidence(data[1:], item_set, {item})), alpha=0.5, marker="*")
+        # Creating our bar plot
+        plt.bar(y_positions, lift)
+        plt.xticks(y_positions, rules)
+        plt.ylabel("Lift")
+        plt.title("Lift of each rule")
+        plt.show()
+    else:
+        mb.showerror("File Error", "Sorry,You need to enter a .csv file")
+
+
+def button_go_callback():
+    try:
+        support_threshold = float(entry_support.get())
+        confidence_threshold = float(entry_confidence.get())
+        input_file = entry_filename.get()
+        if os.path.splitext(input_file)[1] == ".csv":
+            text.delete(1.0, END)
+            data = MBA_Main.read_data(input_file)
+            final_results = ['{} => {}  \t|\t Support = {:.2f}, Confidence = {:.2f}, Lift = {:2f}'.
+                                 format(item_set, item, MBA_Main.support_frequency(data[1:],item_set.union({item})),
+                                 MBA_Main.confidence(data[1:], item_set, {item}), MBA_Main.lift(data[1:], item_set, {item}))
+                                 for item_set, item in MBA_Main.apriori(data[1:], support_threshold, confidence_threshold)]
+
+            date_time = now.strftime("%d/%m/%Y %H:%M:%S")
+            text.insert(INSERT, "Current Date & Time: ", [0], date_time)
+            text.insert(INSERT, "\n\n")
+
+            for result in final_results:
+                text.insert(INSERT, str(result)[3:-2])
+                text.insert(INSERT, "\n\n")
+
+            statusText.set("Rules Generated Successfully")
+        else:
+            mb.showerror("File Error", "Sorry,You need to enter a .csv file")
+    except:
+        mb.showerror("Input Error", "Sorry, No file have been added!")
 
 
 def button_browse_callback():
@@ -45,7 +78,7 @@ def button_viewinput_callback():
         for line in file_reader:
             text.insert(INSERT, line)
             text.insert(INSERT, "\n")
-    statusText.set(" Transactions Displayed Successfully")
+    statusText.set(str(os.path.splitext(input_file)) + " Displayed Successfully" )
 
 
 """
@@ -89,7 +122,7 @@ entry_support = Spinbox(mid_frame, width=5, from_=0.1, to=1, format="%.2f", incr
 Support_label.pack(side=LEFT)
 entry_support.pack(side=LEFT)
 
-VI_label = Label(mid_frame, padx=10, pady=5, text=" ")
+VI_label = Label(mid_frame, padx=10, pady=10, text=" ")
 VI_label.pack(side=LEFT)
 
 button_viewinput = Button(mid_frame, text="View Input", command=button_viewinput_callback)
@@ -100,13 +133,13 @@ Go_label.pack(side=LEFT)
 
 button_go = Button(mid_frame, text="Go", command=button_go_callback)
 button_go.pack(side=RIGHT)
-"""
-SuppGraph_label = Label(mid_frame, padx=5, pady=5, text=" ")
-SuppGraph_label.pack(side=LEFT)
 
-SuppGraph_bttn = Button(mid_frame, text="Graph", command=item_freq_graph)
-SuppGraph_bttn.pack(side=LEFT)
-"""
+plot_label = Label(mid_frame, padx=5, pady=5)
+plot_label.pack(side=LEFT)
+
+button_plot = Button(mid_frame, text="Plot Results", command=button_plot_callback)
+button_plot.pack(side=LEFT)
+
 mid_frame.pack()
 separator = Frame(mid_frame, height=2, bd=1, relief=SUNKEN)
 separator.pack(fill=X, padx=5, pady=5)
@@ -115,7 +148,7 @@ separator = Frame(frame, height=2, bd=1, relief=SUNKEN)
 separator.pack(fill=X, padx=5, pady=5)
 
 # Creating a Frame
-txt_frm = Frame(frame, width=800, height=600)
+txt_frm = Frame(frame, width=1080, height=920)
 txt_frm.pack(fill="both", expand=True)
 txt_frm.grid_propagate(False)
 txt_frm.grid_rowconfigure(0, weight=1)
@@ -129,18 +162,12 @@ scrollbary.grid(row=0, column=1, sticky='w')
 text['yscrollcommand'] = scrollbary.set
 scrollbary.pack(side=RIGHT, fill=Y)
 text.pack()
-"""
-scrollbarX = Scrollbar(txt_frm, command=text.xview)
-scrollbarX.grid(row=1, column=0, sticky='s')
-text['xscrollcommand'] = scrollbarX.set
-scrollbary.pack(side=BOTTOM, fill=X)
-text.pack()
-"""
+
 separator = Frame(frame, height=2, bd=1, relief=SUNKEN)
 separator.pack(fill=X, padx=5, pady=5)
 
 message = Label(frame, textvariable=statusText)
 message.pack()
 
-#root.mainloop()
+
 
